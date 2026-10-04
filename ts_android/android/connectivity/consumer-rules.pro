@@ -1,0 +1,1 @@
+-keep class com.tailscale.rs.android.AndroidConnectivityMonitor { *; }

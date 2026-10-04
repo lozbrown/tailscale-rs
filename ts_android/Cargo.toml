@@ -1,0 +1,31 @@
+[package]
+name = "ts_android"
+version.workspace = true
+description = "Android ConnectivityManager integration for tailscale-rs"
+categories = ["network-programming"]
+keywords = ["tailscale", "android", "networking"]
+
+repository.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+crate-type = ["rlib", "cdylib"]
+
+[dependencies]
+futures-util.workspace = true
+ipnet = { workspace = true, features = ["serde"] }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["sync", "time"] }
+tokio-stream = { workspace = true, features = ["sync"] }
+ts_netmon.workspace = true
+tailscale.workspace = true
+
+[target.'cfg(target_os = "android")'.dependencies]
+jni = "0.22.4"
+
+[lints]
+workspace = true

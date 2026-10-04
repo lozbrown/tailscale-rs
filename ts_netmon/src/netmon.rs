@@ -15,6 +15,9 @@ use crate::{Event, Family, InterfaceId, Route, id::MonType};
 pub type BoxStream<T> = Pin<Box<dyn Stream<Item = T> + Send + 'static>>;
 
 /// Get the platform [`Netmon`] implementation if there is one.
+///
+/// Platforms without a built-in monitor, such as Android, return [`None`].
+/// They can still provide a monitor through the portable [`Netmon`] trait.
 pub const fn platform_mon() -> Option<impl Netmon + 'static> {
     cfg_if::cfg_if! {
         if #[cfg(any(windows, target_os = "linux", target_os = "macos"))] {

@@ -45,7 +45,7 @@ pub struct Runtime {
 }
 
 /// Configuration for starting a [`Runtime`].
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Config {
     /// The control configuration to use.
     pub control_config: ts_control::Config,
@@ -53,6 +53,29 @@ pub struct Config {
     pub auth_key: Option<String>,
     /// The keys to use.
     pub keys: ts_keys::NodeState,
+    /// An optional network monitor supplied by the embedding application.
+    ///
+    /// This is useful on platforms that do not have a built-in monitor, such
+    /// as Android. If omitted, the runtime uses the platform monitor when one
+    /// is available.
+    pub netmon: Option<Arc<dyn ts_netmon::Netmon>>,
+}
+
+fn select_netmon(netmon: Option<Arc<dyn ts_netmon::Netmon>>) -> Option<Arc<dyn ts_netmon::Netmon>> {
+    netmon.or_else(|| {
+        ts_netmon::platform_mon().map(|mon| Arc::new(mon) as Arc<dyn ts_netmon::Netmon>)
+    })
+}
+
+impl std::fmt::Debug for Config {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Config")
+            .field("control_config", &self.control_config)
+            .field("auth_key", &self.auth_key.as_ref().map(|_| "[redacted]"))
+            .field("keys", &"[redacted]")
+            .field("netmon", &self.netmon.as_ref().map(|mon| mon.ty()))
+            .finish()
+    }
 }
 
 impl kameo::Actor for Runtime {
@@ -103,8 +126,9 @@ impl kameo::Actor for Runtime {
             .spawn()
             .await;
 
-        if let Some(mon) = ts_netmon::platform_mon() {
-            netmon::NetmonActor::supervise(&slf, (env.clone(), Arc::new(mon)))
+        let netmon = select_netmon(config.netmon);
+        if let Some(mon) = netmon {
+            netmon::NetmonActor::supervise(&slf, (env.clone(), mon))
                 .spawn()
                 .await;
         }
@@ -149,6 +173,35 @@ impl kameo::Actor for Runtime {
         env.wait::<PeerTracker>(None).await?;
 
         Ok(Self { env })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use futures_util::stream;
+
+    use super::*;
+
+    struct TestNetmon;
+
+    impl ts_netmon::Netmon for TestNetmon {
+        fn ty(&self) -> ts_netmon::MonType {
+            ts_netmon::MonType::new_static("test")
+        }
+
+        fn event_stream(
+            &self,
+        ) -> std::io::Result<ts_netmon::BoxStream<std::io::Result<ts_netmon::Event>>> {
+            Ok(Box::pin(stream::empty()))
+        }
+    }
+
+    #[test]
+    fn supplied_netmon_takes_precedence_over_platform_monitor() {
+        let netmon =
+            select_netmon(Some(Arc::new(TestNetmon))).expect("supplied monitor is retained");
+
+        assert_eq!(netmon.ty(), ts_netmon::MonType::new_static("test"));
     }
 }
 
