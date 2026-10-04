@@ -136,6 +136,7 @@ impl Inner {
 
     fn publish_diff(&self, network_handle: u64, old: Option<&Snapshot>, new: Option<&Snapshot>) {
         let id = InterfaceId::new(MonType::ANDROID_CONNECTIVITY, network_handle);
+        let had_old = old.is_some();
         let old = old.cloned().unwrap_or_else(|| Snapshot {
             interface_name: None,
             up: false,
@@ -173,7 +174,8 @@ impl Inner {
                     metric_v4: 0,
                     metric_v6: 0,
                 };
-                if old.interface_name != new.interface_name
+                if !had_old
+                    || old.interface_name != new.interface_name
                     || old.up != new.up
                     || old.mtu != new.mtu
                 {
@@ -346,5 +348,26 @@ mod tests {
                 .iter()
                 .any(|event| matches!(event, Event::RouteRemoved(_, _)))
         );
+    }
+
+    #[tokio::test]
+    async fn first_snapshot_always_emits_an_interface() {
+        let monitor = AndroidNetmon::new();
+        let mut events = monitor.event_stream().unwrap();
+        monitor
+            .replace_snapshot(
+                7,
+                r#"{"interfaceName":null,"up":false,"mtu":null,"addresses":[],"routes":[]}"#,
+            )
+            .unwrap();
+
+        assert!(matches!(
+            tokio::time::timeout(Duration::from_secs(1), events.next())
+                .await
+                .unwrap()
+                .unwrap()
+                .unwrap(),
+            Event::InterfaceUpsert(_)
+        ));
     }
 }

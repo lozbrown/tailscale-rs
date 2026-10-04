@@ -14,11 +14,12 @@ config.netmon = Some(netmon.clone());
 ```
 
 The Kotlin module lives in `android/connectivity`. Build the Rust library into
-an ABI-specific directory, then point Gradle at it with `rustJniLibsDir`:
+an ABI-specific directory, then point Gradle 8.14.3 or later at it with
+`rustJniLibsDir`:
 
 ```sh
 cargo ndk -t arm64-v8a -o build/android-jni build -p ts_android --release
-ANDROID_HOME=/path/to/sdk ./gradlew -p ts_android/android \
+ANDROID_HOME=/path/to/sdk gradle -p ts_android/android \
   -PrustJniLibsDir="$PWD/build/android-jni" :connectivity:assembleRelease
 ```
 
