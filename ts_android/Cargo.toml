@@ -22,6 +22,7 @@ thiserror.workspace = true
 tokio = { workspace = true, features = ["sync", "time"] }
 tokio-stream = { workspace = true, features = ["sync"] }
 ts_netmon.workspace = true
+tailscale.workspace = true
 
 [target.'cfg(target_os = "android")'.dependencies]
 jni = "0.22.4"

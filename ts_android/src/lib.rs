@@ -22,6 +22,50 @@ use tokio::sync::broadcast;
 use tokio_stream::wrappers::BroadcastStream;
 use ts_netmon::{BoxStream, Event, Interface, InterfaceId, MonType, Netmon, Route};
 
+/// An Android-configured [`tailscale::Device`].
+///
+/// This owns the Android connectivity monitor for the device's entire lifetime
+/// and dereferences to the complete portable [`tailscale::Device`] API.
+pub struct AndroidDevice {
+    device: tailscale::Device,
+    monitor: Arc<AndroidNetmon>,
+}
+
+impl AndroidDevice {
+    /// Connect a device using an already-active Android connectivity monitor.
+    ///
+    /// Create the monitor with [`AndroidNetmon::new`], pass its handle to
+    /// `AndroidConnectivityMonitor` in Kotlin, and call `start()` on that
+    /// Kotlin object before awaiting this method.
+    pub async fn connect(
+        mut config: tailscale::Config,
+        monitor: Arc<AndroidNetmon>,
+        auth_key: Option<String>,
+    ) -> Result<Self, tailscale::Error> {
+        config.netmon = Some(monitor.clone());
+        let device = tailscale::Device::new(&config, auth_key).await?;
+        Ok(Self { device, monitor })
+    }
+
+    /// Return the handle Kotlin passes to `AndroidConnectivityMonitor`.
+    pub fn monitor_handle(&self) -> u64 {
+        self.monitor.handle()
+    }
+
+    /// Shut down the device while retaining its monitor until shutdown ends.
+    pub async fn shutdown(self, timeout: Option<std::time::Duration>) -> bool {
+        self.device.shutdown(timeout).await
+    }
+}
+
+impl std::ops::Deref for AndroidDevice {
+    type Target = tailscale::Device;
+
+    fn deref(&self) -> &Self::Target {
+        &self.device
+    }
+}
+
 static NEXT_HANDLE: AtomicU64 = AtomicU64::new(1);
 static MONITORS: LazyLock<Mutex<HashMap<u64, Weak<Inner>>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));

@@ -5787,6 +5787,7 @@ dependencies = [
  "jni",
  "serde",
  "serde_json",
+ "tailscale",
  "thiserror 2.0.18",
  "tokio",
  "tokio-stream",

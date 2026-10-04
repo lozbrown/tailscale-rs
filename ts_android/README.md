@@ -2,15 +2,18 @@
 
 `ts_android` is the application-scoped Android connectivity adapter for
 `tailscale-rs`. It uses `ConnectivityManager`; it does not use `VpnService`,
-create a TUN device, or change Android routing.
+create a TUN device, or change Android routing. `AndroidDevice` dereferences
+to the complete Rust `tailscale::Device` API.
 
 The Rust application creates and retains the monitor, then passes its handle
 to Kotlin:
 
 ```rust
 let netmon = ts_android::AndroidNetmon::new();
-config.netmon = Some(netmon.clone());
-// Pass netmon.handle() to AndroidConnectivityMonitor.
+let monitor_handle = netmon.handle();
+// Pass monitor_handle to AndroidConnectivityMonitor, then call its start().
+let device = ts_android::AndroidDevice::connect(config, netmon, auth_key).await?;
+let stream = device.tcp_connect(remote_addr).await?;
 ```
 
 The Kotlin module lives in `android/connectivity`. Build the Rust library into
