@@ -55,3 +55,42 @@ jobs:
             :connectivity:assembleRelease
           unzip -l ts_android/android/connectivity/build/outputs/aar/connectivity-release.aar \
             | grep "jni/${{ matrix.abi }}/libts_android.so"
+
+  instrumented_test:
+    name: instrumented test (x86_64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: "8.14.3"
+      - uses: ./.github/actions/setup-rust
+        with:
+          toolchain-version: "1.98.1"
+          builder-triple: x86_64-unknown-linux-gnu
+          targets: x86_64-linux-android
+      - name: Install Android tools and cargo-ndk
+        run: |-
+          sdkmanager "ndk;27.1.12297006" "system-images;android-35;google_apis;x86_64"
+          cargo install cargo-ndk --version 4.1.2 --locked
+      - name: Build Rust JNI library
+        run: |-
+          export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/27.1.12297006"
+          cargo ndk -t x86_64 -o build/android-jni build -p ts_android
+      - name: Create and boot emulator
+        run: |-
+          echo no | avdmanager create avd --force --name ts-android-ci \
+            --package "system-images;android-35;google_apis;x86_64" --device pixel_6
+          emulator -avd ts-android-ci -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect > emulator.log 2>&1 &
+          adb wait-for-device
+          adb shell 'until [[ "$(getprop sys.boot_completed)" == "1" ]]; do sleep 1; done'
+      - name: Run instrumented tests
+        run: |-
+          gradle -p ts_android/android \
+            -PrustJniLibsDir="$PWD/build/android-jni" \
+            :connectivity:connectedDebugAndroidTest
