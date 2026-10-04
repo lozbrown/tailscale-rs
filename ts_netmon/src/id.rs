@@ -16,6 +16,13 @@ impl Display for MonType {
 }
 
 impl MonType {
+    /// [`MonType`] for Android monitors backed by `ConnectivityManager`.
+    ///
+    /// Interface ids are Android [`Network`][android_network] handles.
+    ///
+    /// [android_network]: https://developer.android.com/reference/android/net/Network
+    pub const ANDROID_CONNECTIVITY: Self = Self::new_static("android_connectivity");
+
     /// [`MonType`] for the canonical Windows-platform network monitor, built around
     /// Win32's
     /// [`<iphlpapi.h>`](https://learn.microsoft.com/en-us/windows/win32/api/_iphlp/).
