@@ -203,6 +203,7 @@ all-features = true
 ts_runtime.workspace = true
 ts_control.workspace = true
 ts_netstack_smoltcp = { workspace = true, features = ["tokio"] }
+ts_netmon.workspace = true
 ts_keys.workspace = true
 
 axum = { version = "0.8", optional = true }

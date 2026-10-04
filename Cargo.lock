@@ -5184,6 +5184,7 @@ dependencies = [
  "tracing-test",
  "ts_control",
  "ts_keys",
+ "ts_netmon",
  "ts_netstack_smoltcp",
  "ts_runtime",
  "ts_test_util",

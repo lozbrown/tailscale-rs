@@ -194,6 +194,7 @@ impl Device {
             control_config: config.into(),
             auth_key,
             keys,
+            netmon: config.netmon.clone(),
         });
 
         rt.wait_for_startup_result()

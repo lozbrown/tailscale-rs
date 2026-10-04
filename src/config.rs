@@ -1,6 +1,6 @@
 //! Types and utilities for configuring a Tailscale [`Device`](crate::Device).
 
-use std::path::Path;
+use std::{path::Path, sync::Arc};
 
 use ts_keys::PersistState;
 
@@ -41,6 +41,13 @@ pub struct Config {
     ///
     /// [KB article on ephemeral nodes]: https://tailscale.com/docs/features/ephemeral-nodes
     pub ephemeral: bool,
+
+    /// An optional network monitor supplied by the embedding application.
+    ///
+    /// This is intended for platforms without a built-in monitor, such as
+    /// Android. The supplied monitor receives connectivity changes from the
+    /// embedding application's platform APIs.
+    pub netmon: Option<Arc<dyn ts_netmon::Netmon>>,
 }
 
 impl Config {
@@ -131,6 +138,7 @@ impl Default for Config {
             requested_hostname: None,
             requested_tags: vec![],
             ephemeral: false,
+            netmon: None,
         }
     }
 }
