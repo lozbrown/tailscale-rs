@@ -1,0 +1,57 @@
+name: android
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: package (${{ matrix.abi }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - abi: arm64-v8a
+            target: aarch64-linux-android
+          - abi: x86_64
+            target: x86_64-linux-android
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: "8.14.3"
+      - uses: ./.github/actions/setup-rust
+        with:
+          toolchain-version: "1.98.1"
+          builder-triple: x86_64-unknown-linux-gnu
+          targets: ${{ matrix.target }}
+      - name: Install Android NDK and cargo-ndk
+        run: |-
+          sdkmanager "ndk;27.1.12297006"
+          cargo install cargo-ndk --version 4.1.2 --locked
+      - name: Build Rust JNI library
+        run: |-
+          export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/27.1.12297006"
+          cargo ndk -t ${{ matrix.abi }} -o build/android-jni build -p ts_android --release
+          test -f build/android-jni/${{ matrix.abi }}/libts_android.so
+      - name: Package Android AAR
+        run: |-
+          gradle -p ts_android/android \
+            -PrustJniLibsDir="$PWD/build/android-jni" \
+            :connectivity:assembleRelease
+          unzip -l ts_android/android/connectivity/build/outputs/aar/connectivity-release.aar \
+            | grep "jni/${{ matrix.abi }}/libts_android.so"
